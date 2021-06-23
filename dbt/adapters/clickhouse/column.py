@@ -56,6 +56,22 @@ class ClickhouseColumn(Column):
     def quoted(self) -> str:
         return self.column
 
+    @property
+    def data_type(self) -> str:
+        if self.is_string():
+            _dt: str = self.string_type(self.string_size())
+            if self.is_nullable:
+                return "Nullable({})".format(_dt)
+            return _dt
+        elif self.is_numeric():
+            _dt: str = self.numeric_type(self.dtype, self.numeric_precision,
+                                       self.numeric_scale)              
+            if self.is_nullable:
+                return "Nullable({})".format(_dt)
+            return _dt
+        else:
+            return self.dtype
+
     def is_string(self) -> bool:
         return self.dtype.lower() in [
             'string',

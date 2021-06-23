@@ -12,6 +12,8 @@ from dbt.adapters.base.relation import InformationSchema
 from dbt.adapters.base.impl import catch_as_completed
 from dbt.adapters.base import AdapterConfig, available
 from dbt.adapters.sql import SQLAdapter
+from dbt.logger import GLOBAL_LOGGER as logger
+
 from dbt.adapters.clickhouse import (
     ClickhouseConnectionManager,
     ClickhouseRelation,
@@ -133,6 +135,28 @@ class ClickhouseAdapter(SQLAdapter):
         rows: List[agate.Row] = super().get_columns_in_relation(relation)
 
         return self.parse_clickhouse_columns(relation, rows)
+
+    def expand_column_types(self, goal, current):
+        reference_columns = {
+            c.name: c for c in
+            self.get_columns_in_relation(goal)
+        }
+
+        target_columns = {
+            c.name: c for c
+            in self.get_columns_in_relation(current)
+        }
+
+        for column_name, reference_column in reference_columns.items():
+            target_column = target_columns.get(column_name)
+
+            if target_column is not None and \
+               target_column.can_expand_to(reference_column):
+                if target_column.data_type != reference_column.data_type:
+                    logger.debug("Changing col type from {} to {} in table {}",
+                             target_column.data_type, reference_column.data_type, current)
+                    self.alter_column_type(current, column_name, reference_column.data_type)   
+                
 
     def get_catalog(self, manifest):
         schema_map = self._get_catalog_schemas(manifest)
