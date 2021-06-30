@@ -181,3 +181,39 @@
     alter table {{ relation }} {{ on_cluster_clause(label="on cluster") }} modify column {{ adapter.quote(column_name) }} {{ new_column_type }} 
   {% endcall %}
 {% endmacro %}
+
+{% macro create_table_as_table(temporary, relation, as_relation) -%}
+  {%- set sql_header = config.get('sql_header', none) -%}
+
+  {{ sql_header if sql_header is not none }}
+
+  {% if temporary -%}
+    create temporary table {{ relation.name }}
+    engine = Memory
+    {{ order_cols(label="order by") }}
+    {{ partition_cols(label="partition by") }}
+  {%- else %}
+    create table {{ relation.include(database=False) }}
+    {{ on_cluster_clause(label="on cluster") }}
+    {{ engine_clause(label="engine") }}
+    {{ order_cols(label="order by") }}
+    {{ partition_cols(label="partition by") }}
+  {%- endif %}
+  as {{ as_relation.include(database=False) }}
+{%- endmacro %}
+
+{% macro create_distributed_table(relation, target_local_relation) -%}
+ {%- set sql_header = config.get('sql_header', none) -%}
+
+  {{ sql_header if sql_header is not none }}
+
+  create table {{ relation.include(database=False) }}
+    {{ on_cluster_clause(label="on cluster") }} as {{ target_local_relation.include(database=False) }}
+    {{ distributed_engine_clause("engine", relation, target_local_relation) }}
+{% endmacro %}
+
+{% macro distributed_engine_clause(label, target_relation, target_local_relation) %}
+  {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}
+  {%- set sharding_key = config.get('sharding_key', default='rand()') -%}
+  {{ label }} = Distributed({{ cluster_name }}, {{ target_relation.schema }}, {{ target_local_relation.identifier }}, {{ sharding_key }})
+{% endmacro %}
