@@ -41,8 +41,13 @@
   	{%- if old_relation is not none -%}
 			{{ adapter.rename_relation(target_relation, backup_relation) }}
 		{%- endif -%}
+    {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
+    {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
+	  								  schema=schema,
+	  								  database=database,
+	  								  type='table') -%}
     {% call statement("main") %}
-      {{ create_distributed_table(target_relation, intermediate_relation, sql) }}
+      {{ create_distributed_table(target_relation, intermediate_relation, target_local_relation, sql) }}
     {% endcall %}
     -- drop intermediate relation
 		{{ adapter.drop_relation(intermediate_relation) }}

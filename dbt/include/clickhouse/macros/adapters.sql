@@ -218,14 +218,14 @@
   {{ label }} = Distributed({{ cluster_name }}, {{ target_relation.schema }}, {{ target_local_relation.identifier }}, {{ sharding_key }})
 {% endmacro %}
 
-{% macro create_distributed_table(target_relation, tmp_relation, sql) -%}
+{% macro distributed_local_table_name(target_relation) %}
+  {%- set suffix = config.get('local_suffix',default='local') -%}}
+  {{ return (target_relation.identifier ~ '_' ~suffix) }}
+{% endmacro %}
+
+{% macro create_distributed_table(target_relation, tmp_relation, target_local_relation, sql) -%}
     {# distributed engine model #}
-		{%- set target_local_identifier = target_relation.name + '_local' -%}
-		{%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
-													  schema=target_relation.schema,
-													  database=target_relation.database,
-													  type='table') -%}
-		{%- set old_local_relation = adapter.get_relation(database=target_relation.database, schema=target_relation.schema, identifier=target_local_identifier) -%}
+		{%- set old_local_relation = adapter.get_relation(database=target_relation.database, schema=target_relation.schema, identifier=target_local_relation.identifier) -%}
 		
 		{%- set backup_local_identifier = target_relation.name + '_local__dbt_backup' -%}
 		{%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}

@@ -15,17 +15,18 @@
   {% set to_drop = [] %}
 
   {% if distributed %}
-    {% if existing_relation is none %}
-      {% set build_sql = create_table_as(False, target_relation, sql) %}
-    {% elif existing_relation.is_view or should_full_refresh() %}
-
-    {% endif %}
+    {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
+    {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
+	  								  schema=schema,
+	  								  database=database,
+	  								  type='table') -%}
+    {% do to_drop.append(target_local_relation) %}
+    {% do to_drop.append(tmp_relation) %}
   {% endif %}
 
   {% if existing_relation is none %}
     {% if distributed %}
-      {% set build_sql = create_distributed_table(target_relation, tmp_relation, sql) %}
-      {% do to_drop.append(tmp_relation) %}
+      {% set build_sql = create_distributed_table(target_relation, tmp_relation, target_local_relation, sql) %}
     {% else %}
       {% set build_sql = create_table_as(False, target_relation, sql) %}
     {% endif %}
@@ -36,8 +37,7 @@
     {% do adapter.drop_relation(backup_relation) %}
     {% do adapter.rename_relation(target_relation, backup_relation) %}
     {% if distributed %}
-      {% set build_sql = create_distributed_table(target_relation, tmp_relation, sql) %}
-      {% do to_drop.append(tmp_relation) %}
+      {% set build_sql = create_distributed_table(target_relation, tmp_relation, target_local_relation, sql) %}
     {% else %}
       {% set build_sql = create_table_as(False, target_relation, sql) %}
     {% endif %}
