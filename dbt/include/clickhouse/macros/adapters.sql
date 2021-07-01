@@ -219,7 +219,7 @@
 {% endmacro %}
 
 {% macro create_distributed_table(target_relation, tmp_relation, sql) -%}
-    -- distributed engine model
+    {# distributed engine model #}
 		{%- set target_local_identifier = target_relation.name + '_local' -%}
 		{%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
 													  schema=target_relation.schema,
@@ -233,21 +233,21 @@
 												schema=target_relation.schema,
 												database=target_relation.database,
 												type=backup_local_relation_type) -%}
-		{{ adapter.drop_relation(backup_local_relation) }}
+		{%- do adapter.drop_relation(backup_local_relation) -%}
 
 		{%- do run_query(create_table_as(False, tmp_relation, sql)) -%}
-		-- cleanup
+		{# cleanup #}
 		{%- if old_local_relation is not none -%}
-			{{ adapter.rename_relation(target_local_relation, backup_local_relation) }}
+			{%- do adapter.rename_relation(target_local_relation, backup_local_relation) -%}
 		{%- endif -%}
 
-	  -- create local relation
+	  {# create local relation #}
 		{%- do run_query(create_table_as_table(False, target_local_relation, tmp_relation)) -%}
 
-		-- create distributed relation        
+		{# create distributed relation #}
 		{%- do run_query(create_distributed_table_as(target_relation, target_local_relation)) -%}
 
-		-- insert data into distributed relation
+		{# insert data into distributed relation #}
 		{%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
 		{%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
 
