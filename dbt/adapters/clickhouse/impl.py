@@ -33,7 +33,7 @@ class ClickhouseConfig(AdapterConfig):
     order_by: Optional[Union[List[str], str]] = 'tuple()'
     partition_by: Optional[Union[List[str], str]] = None
     distributed: bool = False
-    sharding_key: Optional[Union[List[str], str]] = 'rand()'
+    sharding_key: str = 'rand()'
 
 
 class ClickhouseAdapter(SQLAdapter):
