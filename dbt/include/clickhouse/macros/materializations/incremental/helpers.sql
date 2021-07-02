@@ -24,5 +24,5 @@
 
   insert into {{ target_relation }} ({{ dest_cols_csv }})
     select {{ dest_cols_csv }}
-    from {{ tmp_relation }};
+    from {{ tmp_relation }}
 {%- endmacro %}
