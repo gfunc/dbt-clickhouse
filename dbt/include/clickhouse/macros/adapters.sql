@@ -40,10 +40,10 @@
 {%- endmacro -%}
 
 {% macro on_cluster_clause(label) %}
-  {% set on_cluster = adapter.get_clickhouse_cluster_name() %}
-  {%- if on_cluster is not none %}
+  {%- set on_cluster = adapter.get_clickhouse_cluster_name() -%}
+  {%- if on_cluster is not none -%}
     {{ label }} {{ on_cluster }}
-  {%- endif %}
+  {%- endif -%}
 {%- endmacro -%}
 
 {% macro clickhouse__create_table_as(temporary, relation, sql) -%}
@@ -51,24 +51,24 @@
 
   {{ sql_header if sql_header is not none }}
 
-  {% if temporary -%}
+  {%- if temporary -%}
     create temporary table {{ relation.name }}
     engine = Memory
     {{ order_cols(label="order by") }}
     {{ partition_cols(label="partition by") }}
-  {%- else %}
+  {%- else -%}
     create table {{ relation.include(database=False) }}
     {{ on_cluster_clause(label="on cluster") }}
     {{ engine_clause(label="engine") }}
     {{ order_cols(label="order by") }}
     {{ partition_cols(label="partition by") }}
-  {%- endif %}
+  {%- endif -%}
   as (
     {{ sql }}
   )
-{%- endmacro %}
+{%- endmacro -%}
 
-{% macro clickhouse__create_view_as(relation, sql) -%}
+{%- macro clickhouse__create_view_as(relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
 
   {{ sql_header if sql_header is not none }}
@@ -77,7 +77,7 @@
   as (
     {{ sql }}
   )
-{%- endmacro %}
+{%- endmacro -%}
 
 {% macro clickhouse__list_schemas(database) %}
   {% call statement('list_schemas', fetch_result=True, auto_begin=False) %}
@@ -220,39 +220,47 @@
 
 {% macro distributed_local_table_name(target_relation) %}
   {%- set suffix = config.get('local_suffix',default='local') -%}}
-  {{ return (target_relation.identifier ~ '_' ~suffix) }}
+  {{ return (target_relation.identifier ~ '_' ~ suffix) }}
 {% endmacro %}
 
-{% macro create_distributed_table(target_relation, tmp_relation, target_local_relation, sql) -%}
-    {# distributed engine model #}
-		{%- set old_local_relation = adapter.get_relation(database=target_relation.database, schema=target_relation.schema, identifier=target_local_relation.identifier) -%}
-		
-		{%- set backup_local_identifier = target_relation.name + '_local__dbt_backup' -%}
-		{%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}
-		{%- set backup_local_relation = api.Relation.create(identifier=backup_local_identifier,
-												schema=target_relation.schema,
-												database=target_relation.database,
-												type=backup_local_relation_type) -%}
-		{%- do adapter.drop_relation(backup_local_relation) -%}
+{% macro create_distributed_table(target_relation, target_local_relation, tmp_relation, sql) -%}
+  {# distributed engine model #}
+  {{ log("executing macro create_distributed_table: " ~ target_relation ~ '_' ~ target_local_relation ~ '_' ~ tmp_relation ~ '_' ~ sql) }}
+	{%- set old_local_relation = adapter.get_relation(database=target_local_relation.database, schema=target_local_relation.schema, identifier=target_local_relation.identifier) -%}
 
-		{%- do run_query(create_table_as(False, tmp_relation, sql)) -%}
-		{# cleanup #}
-		{%- if old_local_relation is not none -%}
-			{%- do adapter.rename_relation(target_local_relation, backup_local_relation) -%}
-		{%- endif -%}
+	{%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}
+  {%- set backup_local_relation = make_backup_relation(target_local_relation, backup_local_relation_type) -%}
 
-	  {# create local relation #}
-		{%- do run_query(create_table_as_table(False, target_local_relation, tmp_relation)) -%}
+	{%- do adapter.drop_relation(backup_local_relation) -%}
+	{%- do run_query(create_table_as(False, tmp_relation, sql)) -%}
+	{# cleanup #}
+	{%- if old_local_relation is not none -%}
+		{%- do adapter.rename_relation(target_local_relation, backup_local_relation) -%}
+	{%- endif -%}
+	{# create local relation #}
+	{%- do run_query(create_table_as_table(False, target_local_relation, tmp_relation)) -%}
+	{# create distributed relation #}
+	{%- do run_query(create_distributed_table_as(target_relation, target_local_relation)) -%}
+	{# insert data into distributed relation #}
+	{%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
+	{%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
+	insert into {{ target_relation.include(database=False) }} ({{ dest_cols_csv }})
+	select {{ dest_cols_csv }}
+	from {{ tmp_relation.include(database=False) }};
 
-		{# create distributed relation #}
-		{%- do run_query(create_distributed_table_as(target_relation, target_local_relation)) -%}
+{% endmacro %}
 
-		{# insert data into distributed relation #}
-		{%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
-		{%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
-
-		insert into {{ target_relation.include(database=False) }} ({{ dest_cols_csv }})
-		select {{ dest_cols_csv }}
-		from {{ tmp_relation.include(database=False) }};
-
+{% macro make_backup_relation(base_relation, relation_type=None, suffix='__dbt_backup') %}
+  {% set backup_identifier = base_relation.identifier ~ suffix %}
+  {% set back_relation_type = 'table' %}
+  {% if relation_type is none %}
+    {% if base_relation.type is not none %}
+      {% set back_relation_type = base_relation.type %}
+    {% endif %}
+  {% endif %}
+	{% set backup_relation = api.Relation.create(identifier=backup_identifier,
+												schema=base_relation.schema,
+												database=base_relation.database,
+												type=back_relation_type) %}
+  {% do return(backup_relation) %}
 {% endmacro %}

@@ -56,6 +56,7 @@ setup(
             'include/clickhouse/dbt_project.yml',
             'include/clickhouse/macros/*.sql',
             'include/clickhouse/macros/**/*.sql',
+            'include/clickhouse/macros/**/**/*.sql',
         ]
     },
     install_requires=[

@@ -47,7 +47,7 @@
 	  								  database=database,
 	  								  type='table') -%}
     {% call statement("main") %}
-      {{ create_distributed_table(target_relation, intermediate_relation, target_local_relation, sql) }}
+      {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
     {% endcall %}
     -- drop intermediate relation
 		{{ adapter.drop_relation(intermediate_relation) }}
