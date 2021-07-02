@@ -219,7 +219,7 @@
 {% endmacro %}
 
 {% macro distributed_local_table_name(target_relation) %}
-  {%- set suffix = config.get('local_suffix',default='local') -%}}
+  {%- set suffix = config.get('local_suffix',default='local') -%}
   {{ return (target_relation.identifier ~ '_' ~ suffix) }}
 {% endmacro %}
 

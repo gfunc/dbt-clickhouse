@@ -12,7 +12,7 @@
 													  schema=schema,
 													  database=database,
 													  type='table') -%}
-	{%- set distributed = config.get('distributed') -%}}
+	{%- set distributed = config.get('distributed') -%}
 
   /*
 	  See ../view/view.sql for more information about this relation.

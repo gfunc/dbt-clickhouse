@@ -5,7 +5,7 @@
   {% set target_relation = this.incorporate(type='table') %}
   {% set existing_relation = load_relation(this) %}
   {% set tmp_relation = make_temp_relation(this) %}
-  {% set distributed = config.get('distributed') %}}
+  {% set distributed = config.get('distributed') %}
 
   {{ run_hooks(pre_hooks, inside_transaction=False) }}
 
