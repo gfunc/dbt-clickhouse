@@ -257,6 +257,8 @@
     {% if base_relation.type is not none %}
       {% set back_relation_type = base_relation.type %}
     {% endif %}
+  {% else%}
+    {% set back_relation_type = relation_type %}
   {% endif %}
 	{% set backup_relation = api.Relation.create(identifier=backup_identifier,
 												schema=base_relation.schema,

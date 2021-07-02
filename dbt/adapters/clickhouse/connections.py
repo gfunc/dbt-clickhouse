@@ -26,6 +26,7 @@ class ClickhouseCredentials(Credentials):
     schema: Optional[str] = 'default'
     password: str = ''
     cluster: Optional[str] = None
+    timeout: int = 10
 
     @property
     def type(self):
@@ -37,13 +38,14 @@ class ClickhouseCredentials(Credentials):
                 f'    schema: {self.schema} \n'
                 f'    database: {self.database} \n'
                 f'    cluster: {self.cluster} \n'
+                f'    timeout: {self.timeout} \n'
                 f'On Clickhouse, database must be omitted or have the same value as'
                 f' schema.'
             )
         self.database = None
 
     def _connection_keys(self):
-        return ('host', 'port', 'user', 'schema')
+        return ('host', 'port', 'user', 'schema', 'timeout')
 
 
 class ClickhouseConnectionManager(SQLConnectionManager):
@@ -83,7 +85,6 @@ class ClickhouseConnectionManager(SQLConnectionManager):
 
         credentials = cls.get_credentials(connection.credentials)
         kwargs = {}
-
         try:
             handle = Client(
                 host=credentials.host,
@@ -92,7 +93,7 @@ class ClickhouseConnectionManager(SQLConnectionManager):
                 user=credentials.user,
                 password=credentials.password,
                 client_name=f'dbt-{dbt_version}',
-                connect_timeout=10,
+                connect_timeout=credentials.timeout,
                 **kwargs,
             )
             connection.handle = handle

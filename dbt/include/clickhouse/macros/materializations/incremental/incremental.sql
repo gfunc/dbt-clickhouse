@@ -20,12 +20,11 @@
     
     {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
     {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
-    								  schema=schema,
-    								  database=database,
-    								  type='table') -%}
-
-    {% set local_tmp_relation = make_temp_relation(target_relation) %}
-    {% do to_drop.append(target_local_relation) %}
+    								                                        schema=schema,
+    								                                        database=database,
+    								                                        type='table') -%}
+    {%- set backup_local_relation = make_backup_relation(target_local_relation, 'table') -%}
+    {% do to_drop.append(backup_local_relation) %}
     {% do to_drop.append(tmp_relation) %}
   {% endif %}
 
