@@ -39,6 +39,7 @@
     {% set backup_relation = make_backup_relation(existing_relation) %}
     {% do adapter.drop_relation(backup_relation) %}
     {% do adapter.rename_relation(target_relation, backup_relation) %}
+    {% do to_drop.append(backup_relation) %}
     {% if distributed %}
       {# drop  backup_local_relation #}
       {% set backup_local_relation = make_backup_relation(target_local_relation) %}
