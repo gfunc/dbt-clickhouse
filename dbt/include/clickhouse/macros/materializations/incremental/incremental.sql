@@ -15,6 +15,10 @@
   {% set to_drop = [] %}
 
   {% if distributed %}
+    {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}
+    {%- if cluster_name is none -%}
+      {% do exceptions.raise_compiler_error("Invalid setting `distributed=True`. `cluster` is not specified in target") %}
+    {%- endif -%}
     {% set tmp_relation = make_temp_relation(target_relation) %}
     {% do adapter.drop_relation(tmp_relation) %}
     

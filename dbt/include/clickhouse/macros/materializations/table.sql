@@ -5,15 +5,20 @@
 
 	{%- set old_relation = adapter.get_relation(database=database, schema=schema, identifier=identifier) -%}
 	{%- set target_relation = api.Relation.create(identifier=identifier,
-												schema=schema,
-												database=database,
-												type='table') -%}
+												                            schema=schema,
+												                            database=database,
+												                            type='table') -%}
 	{%- set intermediate_relation = api.Relation.create(identifier=tmp_identifier,
-													  schema=schema,
-													  database=database,
-													  type='table') -%}
-	{%- set distributed = config.get('distributed') -%}
-
+													                                schema=schema,
+													                                database=database,
+													                                type='table') -%}
+	{%- set distributed = config.get('distributed', default=false) -%}
+	{%- if distributed -%}}
+      {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}
+      {%- if cluster_name is none -%}
+        {% do exceptions.raise_compiler_error("Invalid setting `distributed=True`. `cluster` is not specified in target") %}
+      {%- endif -%}
+	{%- endif -%}
   /*
 	  See ../view/view.sql for more information about this relation.
   */
@@ -43,14 +48,14 @@
 		{%- endif -%}
     {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
     {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
-	  								  schema=schema,
-	  								  database=database,
-	  								  type='table') -%}
-    {% call statement("main") %}
-      {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
-    {% endcall %}
+	  								  						schema=schema,
+	  								  						database=database,
+	  								  						type='table') -%}
+      {% call statement("main") %}
+        {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
+      {% endcall %}
     -- drop intermediate relation
-		{{ adapter.drop_relation(intermediate_relation) }}
+	  {{ adapter.drop_relation(intermediate_relation) }}
 	{% else %}
 		-- build model
 		{% call statement("main") %}

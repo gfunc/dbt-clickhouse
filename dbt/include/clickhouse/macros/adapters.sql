@@ -40,7 +40,10 @@
 {%- endmacro -%}
 
 {% macro on_cluster_clause(label) %}
-  {%- set on_cluster = adapter.get_clickhouse_cluster_name() -%}
+  {%- set on_cluster = target.cluster -%}
+  {%- if on_cluster is none -%}
+    {%- set on_cluster = adapter.get_clickhouse_cluster_name() -%}
+  {%- endif -%}
   {%- if on_cluster is not none -%}
     {{ label }} {{ on_cluster }}
   {%- endif -%}
@@ -203,8 +206,11 @@
 {%- endmacro %}
 
 {% macro create_distributed_table_as(relation, local_relation) -%}
- {%- set sql_header = config.get('sql_header', none) -%}
-
+  {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}
+  {%- if cluster_name is none -%}
+    {% do exceptions.raise_compiler_error("Invalid call of marco `create_distributed_table_as`. `cluster` is not specified in target") %}
+  {%- endif -%}
+  {%- set sql_header = config.get('sql_header', none) -%}
   {{ sql_header if sql_header is not none }}
 
   create table {{ relation.include(database=False) }}
@@ -214,18 +220,20 @@
 
 {% macro distributed_engine_clause(label, target_relation, target_local_relation) %}
   {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}
+  {%- if cluster_name is none -%}
+    {% do exceptions.raise_compiler_error("Invalid call of marco `distributed_engine_clause`. `cluster` is not specified in target") %}
+  {%- endif -%}
   {%- set sharding_key = config.get('sharding_key', default='rand()') -%}
   {{ label }} = Distributed({{ cluster_name }}, {{ target_relation.schema }}, {{ target_local_relation.identifier }}, {{ sharding_key }})
 {% endmacro %}
 
 {% macro distributed_local_table_name(target_relation) %}
-  {%- set suffix = config.get('local_suffix',default='local') -%}
+  {%- set suffix = target.local_suffix -%}
   {{ return (target_relation.identifier ~ '_' ~ suffix) }}
 {% endmacro %}
 
 {% macro create_distributed_table(target_relation, target_local_relation, tmp_relation, sql) -%}
   {# distributed engine model #}
-  {{ log("executing macro create_distributed_table: " ~ target_relation ~ '_' ~ target_local_relation ~ '_' ~ tmp_relation ~ '_' ~ sql) }}
 	{%- set old_local_relation = adapter.get_relation(database=target_local_relation.database, schema=target_local_relation.schema, identifier=target_local_relation.identifier) -%}
 
 	{%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}

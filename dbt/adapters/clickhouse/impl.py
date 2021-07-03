@@ -34,7 +34,6 @@ class ClickhouseConfig(AdapterConfig):
     partition_by: Optional[Union[List[str], str]] = None
     distributed: bool = False
     sharding_key: str = 'rand()'
-    local_suffix: str = 'local'
 
 
 class ClickhouseAdapter(SQLAdapter):

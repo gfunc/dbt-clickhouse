@@ -26,6 +26,7 @@ class ClickhouseCredentials(Credentials):
     schema: Optional[str] = 'default'
     password: str = ''
     cluster: Optional[str] = None
+    local_suffix: Optional[str] = 'local'
     timeout: int = 10
 
     @property
@@ -45,7 +46,7 @@ class ClickhouseCredentials(Credentials):
         self.database = None
 
     def _connection_keys(self):
-        return ('host', 'port', 'user', 'schema', 'timeout')
+        return ('host', 'port', 'user', 'schema', 'cluster', 'local_suffix', 'timeout')
 
 
 class ClickhouseConnectionManager(SQLConnectionManager):
