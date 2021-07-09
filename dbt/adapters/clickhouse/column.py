@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from dbt.adapters.base.column import Column
 from dbt.exceptions import RuntimeException
+from dbt.logger import GLOBAL_LOGGER as logger
 
 Self = TypeVar('Self', bound='ClickhouseColumn')
 
@@ -19,9 +20,9 @@ class ClickhouseColumn(Column):
         'INTEGER': 'Int64',
     }
     is_nullable: bool = False
-    _brackets_regex = re.compile(r'(Nullable|LowCardinality)\((.*?)\)')
-    _fix_size_regex = re.compile(r'FixedString\((.*?)\)')
-    _decimal_regex = re.compile(r'Decimal\((\d+), (\d+)\)')
+    _brackets_regex = re.compile(r'(Nullable|LowCardinality)\((.*?)\)$')
+    _fix_size_regex = re.compile(r'FixedString\((.*?)\)$')
+    _decimal_regex = re.compile(r'Decimal\((\d+), (\d+)\)$')
 
     def __init__(
         self,

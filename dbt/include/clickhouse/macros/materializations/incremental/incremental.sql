@@ -52,7 +52,6 @@
     {% else %}
       {% set build_sql = create_table_as(False, target_relation, sql) %}
     {% endif %}
-    {% do to_drop.append(backup_relation) %}
   {% else %}
     {% set tmp_relation = make_temp_relation(target_relation) %}
     {% do run_query(create_table_as(True, tmp_relation, sql)) %}

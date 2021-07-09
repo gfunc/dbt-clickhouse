@@ -122,7 +122,7 @@
       position
     from system.columns
     where
-      table = '{{ relation.identifier }}'
+      "table" = '{{ relation.identifier }}'
     {% if relation.schema %}
       and database = '{{ relation.schema }}'
     {% endif %}
