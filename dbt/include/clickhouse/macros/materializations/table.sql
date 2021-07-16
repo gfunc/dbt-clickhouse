@@ -51,11 +51,13 @@
 	  								  						schema=schema,
 	  								  						database=database,
 	  								  						type='table') -%}
-      {% call statement("main") %}
-        {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
-      {% endcall %}
+    {%- set backup_local_relation = make_backup_relation(target_local_relation) -%}
+    {% call statement("main") %}
+      {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
+    {% endcall %}
     -- drop intermediate relation
 	  {{ adapter.drop_relation(intermediate_relation) }}
+    {{ adapter.drop_relation(backup_local_relation) }}
 	{% else %}
 		-- build model
 		{% call statement("main") %}
