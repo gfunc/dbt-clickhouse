@@ -50,25 +50,31 @@
 {%- endmacro -%}
 
 {% macro clickhouse__create_table_as(temporary, relation, sql) -%}
+  {#-- distributed ddl (on cluster clause) will be executed on each node within the cluster, that is the same sql will be executed multiple times which could be a waste of processing power --#}
   {%- set sql_header = config.get('sql_header', none) -%}
 
   {{ sql_header if sql_header is not none }}
 
-  {%- if temporary -%}
-    create temporary table {{ relation.name }}
-    engine = Memory
-    {{ order_cols(label="order by") }}
-    {{ partition_cols(label="partition by") }}
+  {%- set distributed_ddl=on_cluster_clause(label="on cluster") -%}
+  
+  {%- if temporary or distributed_ddl is none or distributed_ddl == '' -%}
+    {{ create_table_as_sql(temporary, relation, sql) }}
   {%- else -%}
-    create table {{ relation.include(database=False) }}
+    {%- call statement('create_table') -%}
+      {{ create_table_as_sql(Fales, relation, sql) }}
+    {%- endcall -%}
+    {%- set cols = adapter.get_columns_in_relation(relation) -%}
+    create table if not exists {{ relation.include(database=False) }}
     {{ on_cluster_clause(label="on cluster") }}
-    {{ engine_clause(label="engine") }}
+    (
+    {%- for n in range(cols|length) -%}
+      {{ cols[n].column }} {{ cols[n].dtype }} {{ '' if n+1 == cols|length else ',\n' }}
+    {%- endfor -%}
+    ) {{ engine_clause(label="engine") }}
     {{ order_cols(label="order by") }}
     {{ partition_cols(label="partition by") }}
   {%- endif -%}
-  as (
-    {{ sql }}
-  )
+
 {%- endmacro -%}
 
 {%- macro clickhouse__create_view_as(relation, sql) -%}
@@ -254,7 +260,7 @@
 	{%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
 	insert into {{ target_relation.include(database=False) }} ({{ dest_cols_csv }})
 	select {{ dest_cols_csv }}
-	from {{ tmp_relation.include(database=False) }};
+	from {{ tmp_relation }};
 
 {% endmacro %}
 
@@ -274,3 +280,25 @@
 												type=back_relation_type) %}
   {% do return(backup_relation) %}
 {% endmacro %}
+
+{# create temp table without on cluster clause to avoid waste of processing power #}
+{% macro create_table_as_sql(temporary, relation, sql) -%}
+  {%- set sql_header = config.get('sql_header', none) -%}
+
+  {{ sql_header if sql_header is not none }}
+
+  {%- if temporary -%}
+    create temporary table {{ relation.name }}
+    engine = Memory
+    {{ order_cols(label="order by") }}
+    {{ partition_cols(label="partition by") }}
+  {%- else -%}
+    create table {{ relation.include(database=False) }}
+    {{ engine_clause(label="engine") }}
+    {{ order_cols(label="order by") }}
+    {{ partition_cols(label="partition by") }}
+  {%- endif -%}
+  as (
+    {{ sql }}
+  )
+{%- endmacro -%}
