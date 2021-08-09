@@ -19,6 +19,7 @@ class ClickhouseColumn(Column):
         'FLOAT': 'Float64',
         'INTEGER': 'Int64',
     }
+    raw_type: str = ''
     is_nullable: bool = False
     _brackets_regex = re.compile(r'(Nullable|LowCardinality)\((.*?)\)$')
     _fix_size_regex = re.compile(r'FixedString\((.*?)\)$')
@@ -30,6 +31,7 @@ class ClickhouseColumn(Column):
         dtype: str,
         is_nullable: bool = False,
     ) -> None:
+        self.raw_type=dtype
         char_size = None
         numeric_precision = None
         numeric_scale = None
@@ -55,7 +57,7 @@ class ClickhouseColumn(Column):
 
     @property
     def quoted(self) -> str:
-        return self.column
+        return '"{}"'.format(self.column)
 
     @property
     def data_type(self) -> str:
@@ -71,6 +73,8 @@ class ClickhouseColumn(Column):
                 return "Nullable({})".format(_dt)
             return _dt
         else:
+            if self.is_nullable:
+                return "Nullable({})".format(self.dtype)
             return self.dtype
 
     def is_string(self) -> bool:

@@ -68,7 +68,7 @@
     {{ on_cluster_clause(label="on cluster") }}
     (
     {%- for n in range(cols|length) -%}
-      {{ cols[n].column }} {{ cols[n].dtype }} {{ '' if n+1 == cols|length else ',\n' }}
+      {{ cols[n].column }} {{ cols[n].raw_type }} {{ '' if n+1 == cols|length else ',\n' }}
     {%- endfor -%}
     ) {{ engine_clause(label="engine") }}
     {{ order_cols(label="order by") }}
