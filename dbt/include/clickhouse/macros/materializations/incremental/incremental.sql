@@ -4,8 +4,10 @@
 
   {% set target_relation = this.incorporate(type='table') %}
   {% set existing_relation = load_relation(this) %}
-  {% set tmp_relation = make_temp_relation(this) %}
   {% set distributed = config.get('distributed') %}
+
+  {% set tmp_relation = make_temp_relation(this) %}
+  {% do adapter.drop_relation(tmp_relation) %}
 
   {{ run_hooks(pre_hooks, inside_transaction=False) }}
 
@@ -19,8 +21,6 @@
     {%- if cluster_name is none -%}
       {% do exceptions.raise_compiler_error("Invalid setting `distributed=True`. `cluster` is not specified in target") %}
     {%- endif -%}
-    {% set tmp_relation = make_temp_relation(target_relation) %}
-    {% do adapter.drop_relation(tmp_relation) %}
     
     {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
     {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
@@ -42,7 +42,6 @@
     {#-- Make sure the backup doesn't exist so we don't encounter issues with the rename below #}
     {% set backup_relation = make_backup_relation(existing_relation) %}
     {% do adapter.drop_relation(backup_relation) %}
-    {% do adapter.rename_relation(target_relation, backup_relation) %}
     {% do to_drop.append(backup_relation) %}
     {% if distributed %}
       {# drop  backup_local_relation #}
@@ -50,10 +49,11 @@
       {% do to_drop.append(backup_local_relation) %}
       {% set build_sql = create_distributed_table(target_relation, target_local_relation, tmp_relation, sql) %}
     {% else %}
-      {% set build_sql = create_table_as(False, target_relation, sql) %}
+      {% do run_query(create_table_as(False, tmp_relation, sql)) %}
+      {% do adapter.rename_relation(target_relation, backup_relation) %}
+      {% set build_sql = 'rename table ' ~ tmp_relation ~ ' to ' ~ target_relation ~ ' ' ~ on_cluster_clause(label="on cluster") %}
     {% endif %}
   {% else %}
-    {% set tmp_relation = make_temp_relation(target_relation) %}
     {% do run_query(create_table_as(True, tmp_relation, sql)) %}
     {% do adapter.expand_target_column_types(
                               from_relation=tmp_relation,

@@ -23,10 +23,7 @@
 	  See ../view/view.sql for more information about this relation.
   */
 	{%- set backup_relation_type = 'table' if old_relation is none else old_relation.type -%}
-	{%- set backup_relation = api.Relation.create(identifier=backup_identifier,
-												schema=schema,
-												database=database,
-												type=backup_relation_type) -%}
+  {%- set backup_relation = make_backup_relation(target_relation, backup_relation_type) -%}
 
 	{%- set exists_as_table = (old_relation is not none and old_relation.is_table) -%}
 	{%- set exists_as_view = (old_relation is not none and old_relation.is_view) -%}
@@ -43,9 +40,7 @@
 
 
 	{% if distributed %}
-  	{%- if old_relation is not none -%}
-			{{ adapter.rename_relation(target_relation, backup_relation) }}
-		{%- endif -%}
+
     {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
     {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
 	  								  						schema=schema,

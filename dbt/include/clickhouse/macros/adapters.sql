@@ -240,27 +240,36 @@
 
 {% macro create_distributed_table(target_relation, target_local_relation, tmp_relation, sql) -%}
   {# distributed engine model #}
+	{%- set old_relation = adapter.get_relation(database=target_relation.database, schema=target_relation.schema, identifier=target_relation.identifier) -%}
 	{%- set old_local_relation = adapter.get_relation(database=target_local_relation.database, schema=target_local_relation.schema, identifier=target_local_relation.identifier) -%}
+	
+  {%- set backup_relation_type = 'table' if old_relation is none else old_relation.type -%}
 
-	{%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}
+  {%- set backup_local_relation_type = 'table' if old_local_relation is none else old_local_relation.type -%}
   {%- set backup_local_relation = make_backup_relation(target_local_relation, backup_local_relation_type) -%}
 
 	{%- do adapter.drop_relation(backup_local_relation) -%}
 	{%- do run_query(create_table_as(False, tmp_relation, sql)) -%}
-	{# cleanup #}
+	
+  {# create local relation #}
+  {%- if old_relation is not none -%}
+    {%- set backup_relation = make_backup_relation(target_relation, backup_relation_type) -%}
+		{%- do adapter.rename_relation(target_relation, backup_relation) -%}
+	{%- endif -%}
 	{%- if old_local_relation is not none -%}
 		{%- do adapter.rename_relation(target_local_relation, backup_local_relation) -%}
 	{%- endif -%}
-	{# create local relation #}
 	{%- do run_query(create_table_as_table(False, target_local_relation, tmp_relation)) -%}
-	{# create distributed relation #}
+	
+  {# create distributed relation #}
 	{%- do run_query(create_distributed_table_as(target_relation, target_local_relation)) -%}
-	{# insert data into distributed relation #}
+	
+  {# insert data into distributed relation #}
 	{%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
 	{%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
 	insert into {{ target_relation.include(database=False) }} ({{ dest_cols_csv }})
 	select {{ dest_cols_csv }}
-	from {{ tmp_relation }};
+	from {{ tmp_relation }}
 
 {% endmacro %}
 
