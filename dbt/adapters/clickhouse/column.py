@@ -21,6 +21,7 @@ class ClickhouseColumn(Column):
     }
     raw_type: str = ''
     is_nullable: bool = False
+    is_composite: bool = False
     _brackets_regex = re.compile(r'(Nullable|LowCardinality)\((.*?)\)$')
     _fix_size_regex = re.compile(r'FixedString\((.*?)\)$')
     _decimal_regex = re.compile(r'Decimal\((\d+), (\d+)\)$')
@@ -35,20 +36,22 @@ class ClickhouseColumn(Column):
         char_size = None
         numeric_precision = None
         numeric_scale = None
+        if dtype.lower().startswith('tuple') or dtype.lower().startswith('array') or dtype.lower().startswith('map'):
+            self.is_composite = True
+        if not self.is_composite:
+            match_brackets = self._brackets_regex.search(dtype)
+            if match_brackets:
+                self.is_nullable = True
+                dtype = match_brackets.group(2)
 
-        match_brackets = self._brackets_regex.search(dtype)
-        if match_brackets:
-            self.is_nullable = True
-            dtype = match_brackets.group(2)
+            if dtype.lower().startswith('fixedstring'):
+                match_sized = self._fix_size_regex.search(dtype)
+                char_size = int(match_sized.group(2))
 
-        if dtype.lower().startswith('fixedstring'):
-            match_sized = self._fix_size_regex.search(dtype)
-            char_size = int(match_sized.group(2))
-
-        if dtype.lower().startswith('decimal'):
-            match_dec = self._decimal_regex.search(dtype)
-            numeric_precision = int(match_dec.group(1))
-            numeric_scale = int(match_dec.group(2))
+            if dtype.lower().startswith('decimal'):
+                match_dec = self._decimal_regex.search(dtype)
+                numeric_precision = int(match_dec.group(1))
+                numeric_scale = int(match_dec.group(2))
 
         super().__init__(column, dtype, char_size, numeric_precision, numeric_scale)
 
