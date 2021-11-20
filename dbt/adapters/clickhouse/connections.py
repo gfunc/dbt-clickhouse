@@ -95,6 +95,7 @@ class ClickhouseConnectionManager(SQLConnectionManager):
                 password=credentials.password,
                 client_name=f'dbt-{dbt_version}',
                 connect_timeout=credentials.timeout,
+                send_receive_timeout=credentials.timeout,
                 **kwargs,
             )
             connection.handle = handle
