@@ -1,6 +1,5 @@
 {% materialization table, adapter='clickhouse' %}
 	{%- set identifier = model['alias'] -%}
-	{%- set tmp_identifier = model['name'] + '__dbt_tmp' -%}
 	{%- set backup_identifier = model['name'] + '__dbt_backup' -%}
 
 	{%- set old_relation = adapter.get_relation(database=database, schema=schema, identifier=identifier) -%}
@@ -8,10 +7,7 @@
 												                            schema=schema,
 												                            database=database,
 												                            type='table') -%}
-	{%- set intermediate_relation = api.Relation.create(identifier=tmp_identifier,
-													                                schema=schema,
-													                                database=database,
-													                                type='table') -%}
+    {% set intermediate_relation = make_temp_relation(target_relation,'__dbt_tmp') %}
 	{%- set distributed = config.get('distributed', default=false) -%}
 	{%- if distributed -%}}
       {%- set cluster_name = adapter.get_clickhouse_cluster_name() -%}

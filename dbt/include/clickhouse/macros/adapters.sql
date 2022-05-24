@@ -161,7 +161,7 @@
 {% macro clickhouse__make_temp_relation(base_relation, suffix) %}
   {% set tmp_identifier = base_relation.identifier ~ suffix %}
   {% set tmp_relation = base_relation.incorporate(
-                              path={"identifier": tmp_identifier, "schema": target.schema}) -%}
+                              path={"identifier": tmp_identifier, "schema": base_relation.schema}) -%}
   {% do return(tmp_relation) %}
 {% endmacro %}
 

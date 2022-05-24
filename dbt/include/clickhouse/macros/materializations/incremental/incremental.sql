@@ -6,7 +6,7 @@
   {% set existing_relation = load_relation(this) %}
   {% set distributed = config.get('distributed') %}
 
-  {% set tmp_relation = make_temp_relation(target_relation) %}
+  {% set tmp_relation = make_temp_relation(target_relation,'__dbt_tmp') %}
   {% do adapter.drop_relation(tmp_relation) %}
 
   {{ run_hooks(pre_hooks, inside_transaction=False) }}
