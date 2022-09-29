@@ -26,3 +26,7 @@
   {%- set target_local_relation_identifier=distributed_local_table_name(target_relation) -%}
   grant {{ on_cluster_clause(label="on cluster") }} select on {{ target_relation.schema }}.{{ target_local_relation_identifier }} to {{ role }}
 {% endmacro %}
+
+{% macro flush_distributed_table(relation) %}
+  SYSTEM FLUSH DISTRIBUTED {{ relation.schema }}.{{ relation.identifier }}
+{% endmacro %}

@@ -37,18 +37,21 @@
 
 	{% if distributed %}
 
-    {%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
-    {%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
-	  								  						schema=schema,
-	  								  						database=database,
-	  								  						type='table') -%}
-    {%- set backup_local_relation = make_backup_relation(target_local_relation) -%}
-    {% call statement("main") %}
-      {{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
-    {% endcall %}
-    -- drop intermediate relation
-	  {{ adapter.drop_relation(intermediate_relation) }}
-    {{ adapter.drop_relation(backup_local_relation) }}
+		{%- set target_local_identifier=distributed_local_table_name(target_relation) -%}
+		{%- set target_local_relation = api.Relation.create(identifier=target_local_identifier,
+																schema=schema,
+																database=database,
+																type='table') -%}
+		{%- set backup_local_relation = make_backup_relation(target_local_relation) -%}
+		{% call statement("main") %}
+		{{ create_distributed_table(target_relation, target_local_relation, intermediate_relation, sql) }}
+		{% endcall %}
+		-- drop intermediate relation
+		{{ adapter.drop_relation(intermediate_relation) }}
+		{{ adapter.drop_relation(backup_local_relation) }}
+		{% call statement("main") %}
+			{{ flush_distributed_table(target_relation) }}
+		{% endcall %}
 	{% else %}
 		-- build model
 		{% call statement("main") %}

@@ -54,7 +54,7 @@
       {% set build_sql = 'rename table ' ~ tmp_relation ~ ' to ' ~ target_relation ~ ' ' ~ on_cluster_clause(label="on cluster") %}
     {% endif %}
   {% else %}
-    {% do run_query(create_table_as(True, tmp_relation, sql)) %}
+    {% do run_query(create_table_as(False, tmp_relation, sql)) %}
     {% do adapter.expand_target_column_types(
                               from_relation=tmp_relation,
                               to_relation=target_relation) %}
@@ -64,6 +64,12 @@
   {% call statement("main") %}
       {{ build_sql }}
   {% endcall %}
+  
+  {% if distributed %}
+		{% call statement("main") %}
+			{{ flush_distributed_table(target_relation) }}
+		{% endcall %}
+  {% endif %}
 
   {% do persist_docs(target_relation, model) %}
 
